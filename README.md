@@ -113,5 +113,3 @@ MIT (or your chosen license)
 
 - **Frontend:** https://green-cart-pearl.vercel.app
 - **Backend:** https://green-cart-backend-cofn.onrender.com
-
-Let me know if you want to customize this further!
