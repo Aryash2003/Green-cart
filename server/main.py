@@ -89,41 +89,39 @@ def analyze_carbon_footprint(last_link):
 
 # Analyze carbon footprint with product object
 
-def analyze_carbon_footprint_product(product):
-    """Generates a carbon footprint analysis using Google Gemini API for a product object."""
-    if not product:
-        return "No product data found."
+def analyze_carbon_footprint_product(last_link):
+    """Generates a carbon footprint analysis using Google Gemini API."""
+    if not last_link:
+        return "No product link found."
+
     prompt = f"""
-    You are an environmental expert. Analyze the following Amazon product for carbon footprint and sustainability.
+    You are an environmental expert. Analyze the following product page for carbon footprint and sustainability from its provided link.
 
-    Product Details:
-    Title: {product.get('product_title', 'N/A')}
-    Price: {product.get('product_price', 'N/A')}
-    URL: {product.get('product_url', 'N/A')}
-    Photo: {product.get('product_photo', 'N/A')}
-    Material/Byline: {product.get('product_byline', 'N/A')}
-    Prime: {product.get('is_prime', 'N/A')}
-    Climate Pledge Friendly: {product.get('climate_pledge_friendly', 'N/A')}
-    Delivery: {product.get('delivery', 'N/A')}
-    Sales Volume: {product.get('sales_volume', 'N/A')}
-
+    Product Link: {last_link}
+    
     Consider:
     - Material composition
     - Manufacturing and transportation impact
     - The estimated total carbon footprint it leaves in the environment
     - Eco-friendly alternatives
     - Sustainability rating (out of 10)
-    PLEASE Donot use ## or(.) in headings as frontend renders whole text and it looks ugly.
+
     Provide a structured analysis in detailed points showcasing quality, sustainability, ecofriendliness and carbon footprint of the product.
     IMPORTANT: Do NOT mention lack of data, do NOT say you cannot provide a precise calculation, and do NOT use generic disclaimers. Always provide a detailed, actionable analysis based on reasonable assumptions and typical product characteristics. Never say you cannot analyze. If you must assume, do so confidently and state your assumptions.
+    Please keep it short and concise, ideally under 300 words.
     """
+
     response = client.models.generate_content(
         model="gemini-2.0-flash", contents=[prompt]
     )
+
+    # Extract response properly
     try:
         result_text = response.candidates[0].content.parts[0].text
     except (AttributeError, IndexError):
         result_text = "Error: Unable to generate analysis."
+
+    # Filter out generic fallback responses
     fallback_phrases = [
         "without access to the manufacturer's specific data",
         "precise carbon footprint calculation is impossible",
@@ -135,6 +133,7 @@ def analyze_carbon_footprint_product(product):
         "lack of data"
     ]
     if any(phrase in result_text.lower() for phrase in fallback_phrases):
+        # Optionally, you could re-prompt here, but for now, return a custom message
         result_text = "This product's carbon footprint has been estimated based on typical materials, manufacturing, and shipping practices. See below for a detailed, actionable analysis and recommendations."
     return result_text
 
@@ -284,6 +283,7 @@ def analyse_url():
             products = json.load(f)["data"]["products"]
         product = next((p for p in products if p.get('asin') == asin), None)
         if not product:
+            print("Product not found in data1.json for ASIN:", asin)
             return jsonify({"error": "Product not found in data1.json."}), 404
         analysis = analyze_carbon_footprint_product(product)
         return jsonify({
