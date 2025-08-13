@@ -20,7 +20,7 @@ function BackgroundImage() {
     />
   );
 }
-
+// Analysis component to fetch and display product analysis
 const Analysis = () => {
   const [analysis, setAnalysis] = useState(null);
   const [error, setError] = useState(null);
