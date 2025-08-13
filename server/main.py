@@ -118,7 +118,7 @@ def analyze_carbon_footprint_product(product):
     IMPORTANT: Do NOT mention lack of data, do NOT say you cannot provide a precise calculation, and do NOT use generic disclaimers. Always provide a detailed, actionable analysis based on reasonable assumptions and typical product characteristics. Never say you cannot analyze. If you must assume, do so confidently and state your assumptions.
     """
     response = client.models.generate_content(
-        model="gemini-1.5-flash", contents=[prompt]
+        model="gemini-2.0-flash", contents=[prompt]
     )
     try:
         result_text = response.candidates[0].content.parts[0].text
