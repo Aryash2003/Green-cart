@@ -12,7 +12,7 @@ import re
 import glob
 
 # Set up Google Gemini API client
-client = genai.Client(api_key="AIzaSyC7VmFWi3ZEobk8tvwNl5JFpL76gIaxha8")
+client = genai.Client(api_key="AIzaSyD69LwIU1gJ16mLhHGppD97ZB14VNOqK_A")
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": [
