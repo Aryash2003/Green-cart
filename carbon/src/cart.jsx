@@ -26,11 +26,14 @@ const Cart = ({ cart, setCart }) => {
           backgroundImage: `url(${bgImage})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
-          zIndex: "-1",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
+          zIndex: 0,
+          pointerEvents: "none",
         }}
         aria-hidden="true"
       />
-      <div className="container mt-4">
+      <div className="container mt-4" style={{ position: "relative", zIndex: 1 }}>
         <h1 className="text-center">Your Cart</h1>
         <div className="d-flex justify-content-end mb-3" style={{ gap: '1rem' }}>
           <button className="btn btn-danger" onClick={handleClear}>Clear</button>

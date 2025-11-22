@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import bgImage from "./assets/bgimg.jpg";
-const API_BASE_URL = "https://green-cart-backend-cofn.onrender.com";
+const API_BASE_URL = "http://localhost:8080";
 function BackgroundImage() {
   return (
     <div

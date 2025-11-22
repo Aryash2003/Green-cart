@@ -8,16 +8,18 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 import os
 from datetime import datetime
+import time
+from google.genai.errors import ClientError
 import re
 import glob
 
 # Set up Google Gemini API client
-client = genai.Client(api_key="AIzaSyD69LwIU1gJ16mLhHGppD97ZB14VNOqK_A")
+client = genai.Client(api_key="AIzaSyBfmRnaitpdHZjJUWEsHhtv9Ps1XgKCvKI")
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": [
-    "https://green-cart-pearl.vercel.app"
-]}})  # Restrict CORS to the frontend origin
+
+
+CORS(app)
 
 DATA_FILE = "data.json"
 
@@ -39,8 +41,9 @@ def write_links(links):
         json.dump({"users": links}, file, indent=4)
 
 # Analyze carbon footprint
+
 def analyze_carbon_footprint(last_link):
-    """Generates a carbon footprint analysis using Google Gemini API."""
+    """Generates a carbon footprint analysis using Google Gemini API with retry logic for quota errors."""
     if not last_link:
         return "No product link found."
 
@@ -61,9 +64,25 @@ def analyze_carbon_footprint(last_link):
     Please keep it short and concise, ideally under 300 words.
     """
 
-    response = client.models.generate_content(
-        model="gemini-2.0-flash", contents=[prompt]
-    )
+    max_retries = 4
+    backoff = 1.0
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.0-flash", contents=[prompt]
+            )
+            break
+        except ClientError as e:
+            status_code = getattr(e, 'status_code', None)
+            if status_code == 429:
+                if attempt == max_retries:
+                    raise
+                sleep_time = backoff * (2 ** (attempt - 1))
+                sleep_time += (0.1 * sleep_time)  # jitter
+                time.sleep(sleep_time)
+                continue
+            else:
+                raise
 
     # Extract response properly
     try:
@@ -143,11 +162,15 @@ def users():
     links = read_links()
     last_link = links[-1] if links else None  # Get last product link
     print(last_link)
-    analysis = [analyze_carbon_footprint(last_link)]
-    print(analysis)
-    return jsonify({
-        "users": analysis
-    })
+    try:
+        analysis = [analyze_carbon_footprint(last_link)]
+        print(analysis)
+        return jsonify({
+            "users": analysis
+        })
+    except ClientError as e:
+        app.logger.error("GenAI ClientError: %s", e)
+        return jsonify({"error": "External analysis temporarily unavailable due to quota limits. Please try again later."}), 503
 
 # API to submit new product link
 @app.route("/api/submit", methods=["POST"])

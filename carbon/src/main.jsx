@@ -13,7 +13,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import ProductSearch from "./index.jsx";
 import Analysis from "./analysis.jsx";
 import Cart from "./cart.jsx";
-const API_BASE_URL = "https://green-cart-backend-cofn.onrender.com";
+const API_BASE_URL = "http://localhost:8080";
 function BackgroundImage() {
   return (
     <div
@@ -26,7 +26,10 @@ function BackgroundImage() {
         backgroundImage: `url(${bgImage})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
-        zIndex: "-1",
+        backgroundRepeat: "no-repeat",
+        backgroundAttachment: "fixed",
+        zIndex: 0,
+        pointerEvents: "none",
       }}
       aria-hidden="true"
     />

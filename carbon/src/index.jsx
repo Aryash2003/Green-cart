@@ -9,7 +9,7 @@ import Alert from "react-bootstrap/Alert";
 import Nav from "react-bootstrap/Nav"; // Added missing import for Nav
 import { Link, useNavigate } from "react-router-dom";
 import bgImage from "./assets/bgimg.jpg";
-const API_BASE_URL = "https://green-cart-backend-cofn.onrender.com";
+const API_BASE_URL = "http://localhost:8080";
 function BackgroundImage() {
   return (
     <div
@@ -22,7 +22,10 @@ function BackgroundImage() {
         backgroundImage: `url(${bgImage})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
-        zIndex: "-1",
+        backgroundRepeat: "no-repeat",
+        backgroundAttachment: "fixed",
+        zIndex: 0,
+        pointerEvents: "none",
       }}
       aria-hidden="true"
     />
@@ -116,7 +119,7 @@ const ProductSearch = ({ cart, setCart }) => {
   return (
     <>
       <BackgroundImage />
-      <div className="p-4">
+      <div className="p-4" style={{ position: "relative", zIndex: 1 }}>
         <Navbar bg="dark" variant="dark">
           <Container>
             <Navbar.Brand as={Link} to="/product-search">Eco Cart</Navbar.Brand>
