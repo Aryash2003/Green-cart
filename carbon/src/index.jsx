@@ -9,7 +9,7 @@ import Alert from "react-bootstrap/Alert";
 import Nav from "react-bootstrap/Nav"; // Added missing import for Nav
 import { Link, useNavigate } from "react-router-dom";
 import bgImage from "./assets/bgimg.jpg";
-const API_BASE_URL = "";
+const API_BASE_URL = "https://orlando-roy-audio-votes.trycloudflare.com"
 function BackgroundImage() {
   return (
     <div

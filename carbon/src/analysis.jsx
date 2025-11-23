@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import bgImage from "./assets/bgimg.jpg";
-const API_BASE_URL = "";
+const API_BASE_URL = "https://orlando-roy-audio-votes.trycloudflare.com"
 function BackgroundImage() {
   return (
     <div
