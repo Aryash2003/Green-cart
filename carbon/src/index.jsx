@@ -9,7 +9,7 @@ import Alert from "react-bootstrap/Alert";
 import Nav from "react-bootstrap/Nav"; // Added missing import for Nav
 import { Link, useNavigate } from "react-router-dom";
 import bgImage from "./assets/bgimg.jpg";
-const API_BASE_URL = "http://localhost:8080";
+const API_BASE_URL = "http://13.60.214.116";
 function BackgroundImage() {
   return (
     <div
