@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import bgImage from "./assets/bgimg.jpg";
-const API_BASE_URL = "http://13.60.214.116";
+const API_BASE_URL = "";
 function BackgroundImage() {
   return (
     <div
