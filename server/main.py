@@ -12,9 +12,15 @@ import time
 from google.genai.errors import ClientError
 import re
 import glob
+from dotenv import load_dotenv
+import logging
 
-# Set up Google Gemini API client
-client = genai.Client(api_key="AIzaSyBfmRnaitpdHZjJUWEsHhtv9Ps1XgKCvKI")
+# Load environment variables and configure Google Gemini API client
+load_dotenv()
+logging.basicConfig(level=logging.INFO)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 app = Flask(__name__)
 
@@ -107,54 +113,6 @@ def analyze_carbon_footprint(last_link):
     return result_text
 
 # Analyze carbon footprint with product object
-
-def analyze_carbon_footprint_product(last_link):
-    """Generates a carbon footprint analysis using Google Gemini API."""
-    if not last_link:
-        return "No product link found."
-
-    prompt = f"""
-    You are an environmental expert. Analyze the following product page for carbon footprint and sustainability from its provided link.
-
-    Product Link: {last_link}
-    
-    Consider:
-    - Material composition
-    - Manufacturing and transportation impact
-    - The estimated total carbon footprint it leaves in the environment
-    - Eco-friendly alternatives
-    - Sustainability rating (out of 10)
-
-    Provide a structured analysis in detailed points showcasing quality, sustainability, ecofriendliness and carbon footprint of the product.
-    IMPORTANT: Do NOT mention lack of data, do NOT say you cannot provide a precise calculation, and do NOT use generic disclaimers. Always provide a detailed, actionable analysis based on reasonable assumptions and typical product characteristics. Never say you cannot analyze. If you must assume, do so confidently and state your assumptions.
-    Please keep it short and concise, ideally under 300 words.
-    """
-
-    response = client.models.generate_content(
-        model="gemini-2.0-flash", contents=[prompt]
-    )
-
-    # Extract response properly
-    try:
-        result_text = response.candidates[0].content.parts[0].text
-    except (AttributeError, IndexError):
-        result_text = "Error: Unable to generate analysis."
-
-    # Filter out generic fallback responses
-    fallback_phrases = [
-        "without access to the manufacturer's specific data",
-        "precise carbon footprint calculation is impossible",
-        "cannot provide",
-        "impossible to calculate",
-        "cannot determine",
-        "not enough data",
-        "not possible to provide",
-        "lack of data"
-    ]
-    if any(phrase in result_text.lower() for phrase in fallback_phrases):
-        # Optionally, you could re-prompt here, but for now, return a custom message
-        result_text = "This product's carbon footprint has been estimated based on typical materials, manufacturing, and shipping practices. See below for a detailed, actionable analysis and recommendations."
-    return result_text
 
 # API to get last product and its analysis
 @app.route("/api/users", methods=["GET"])
@@ -301,22 +259,32 @@ def analyse_url():
         asin = data.get('asin')
         if not asin:
             return jsonify({"error": "Product ASIN is required."}), 400
-        # Load data1.json (or latest dataN.json if you want)
+        # Load data1.json (or latest dataN.json if you want) and extract product_url
         with open(os.path.join(BASE_DIR, 'data1.json'), 'r', encoding='utf-8') as f:
             products = json.load(f)["data"]["products"]
         product = next((p for p in products if p.get('asin') == asin), None)
         if not product:
             print("Product not found in data1.json for ASIN:", asin)
             return jsonify({"error": "Product not found in data1.json."}), 404
-        analysis = analyze_carbon_footprint_product(product)
+        last_link = product.get('product_url') or product.get('url') or product.get('product_link')
+        if not last_link:
+            app.logger.info("Product URL missing for ASIN %s; cannot use analyze_carbon_footprint", asin)
+            return jsonify({"error": "Product URL missing for ASIN; cannot analyze."}), 400
+
+        analysis = analyze_carbon_footprint(last_link)
+        if not analysis:
+            raise RuntimeError("Empty analysis returned from external API")
+        result_points = analysis.split("\n") if isinstance(analysis, str) else [str(analysis)]
         return jsonify({
-            "points": analysis.split("\n"),
+            "points": result_points,
             "description": "Detailed analysis of the product.",
-            "asin": asin
+            "asin": asin,
+            "link": last_link
         }), 200
     except Exception as e:
+        print(e)
         return jsonify({"error": "An error occurred during analysis.", "details": str(e)}), 500
 
 
 if __name__ == "__main__":
-    app.run(debug=False, port=8080)
+    app.run(debug=True, port=8080)
