@@ -9,7 +9,7 @@ import Alert from "react-bootstrap/Alert";
 import Nav from "react-bootstrap/Nav"; // Added missing import for Nav
 import { Link, useNavigate } from "react-router-dom";
 import bgImage from "./assets/bgimg.jpg";
-const API_BASE_URL = "http://ec2-13-60-214-116.eu-north-1.compute.amazonaws.com:8080";
+const API_BASE_URL = "https://green-cart-backend-cofn.onrender.com";
 function BackgroundImage() {
   return (
     <div

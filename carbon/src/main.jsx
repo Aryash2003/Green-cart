@@ -13,7 +13,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import ProductSearch from "./index.jsx";
 import Analysis from "./analysis.jsx";
 import Cart from "./cart.jsx";
-const API_BASE_URL = "http://ec2-13-60-214-116.eu-north-1.compute.amazonaws.com:8080";
+const API_BASE_URL = "https://green-cart-backend-cofn.onrender.com";
 function BackgroundImage() {
   return (
     <div
