@@ -75,7 +75,7 @@ def analyze_carbon_footprint(last_link):
     for attempt in range(1, max_retries + 1):
         try:
             response = client.models.generate_content(
-                model="gemini-2.0-flash", contents=[prompt]
+                model="gemini-2.5-flash", contents=[prompt]
             )
             break
         except ClientError as e:
