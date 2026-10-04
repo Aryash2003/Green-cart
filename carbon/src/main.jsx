@@ -13,7 +13,9 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import ProductSearch from "./index.jsx";
 import Analysis from "./analysis.jsx";
 import Cart from "./cart.jsx";
-const API_BASE_URL = "https://green-cart-backend-cofn.onrender.com";
+const API_BASE_URL = import.meta.env.DEV
+  ? "http://localhost:8080"
+  : "https://green-cart-backend-cofn.onrender.com";
 function BackgroundImage() {
   return (
     <div

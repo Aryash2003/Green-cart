@@ -48,15 +48,23 @@ def write_links(links):
 
 # Analyze carbon footprint
 
-def analyze_carbon_footprint(last_link):
+def analyze_carbon_footprint(last_link, product_title=None):
     """Generates a carbon footprint analysis using Google Gemini API with retry logic for quota errors."""
     if not last_link:
         return "No product link found."
 
+    product_context = f"""
+    Exact product title supplied by the customer: {product_title}
+    Treat this title as the authoritative product identity. The URL is only a reference;
+    do not analyze or substitute any other product that may be associated with it.
+    Base the analysis on the product category indicated by the title. Clearly label
+    material and footprint estimates, and do not invent specific product facts.
+    """ if product_title else ""
     prompt = f"""
-    You are an environmental expert. Analyze the following product page for carbon footprint and sustainability from its provided link.
+    You are an environmental expert. Analyze the selected product for carbon footprint and sustainability.
 
-    Product Link: {last_link}
+    {product_context}
+    Reference URL (not authoritative for product identity): {last_link}
     
     Consider:
     - Material composition
@@ -66,7 +74,9 @@ def analyze_carbon_footprint(last_link):
     - Sustainability rating (out of 10)
 
     Provide a structured analysis in detailed points showcasing quality, sustainability, ecofriendliness and carbon footprint of the product.
-    IMPORTANT: Do NOT mention lack of data, do NOT say you cannot provide a precise calculation, and do NOT use generic disclaimers. Always provide a detailed, actionable analysis based on reasonable assumptions and typical product characteristics. Never say you cannot analyze. If you must assume, do so confidently and state your assumptions.
+    Start with "Product analyzed: {product_title or 'the product'}" so the analyzed item is explicit.
+    Separate known details from estimates. Do not claim exact emissions, materials, certifications,
+    or manufacturing details unless they are provided in the product title or page data.
     Please keep it short and concise, ideally under 300 words.
     """
 
@@ -75,11 +85,18 @@ def analyze_carbon_footprint(last_link):
     for attempt in range(1, max_retries + 1):
         try:
             response = client.models.generate_content(
-                model="gemini-2.5-flash", contents=[prompt]
+                model="gemini-3.8-flash", contents=[prompt]
             )
             break
         except ClientError as e:
             status_code = getattr(e, 'status_code', None)
+            error_text = str(e).lower()
+            daily_quota_exhausted = (
+                "generaterequestsperdayperprojectpermodel" in error_text
+                or "generate_content_free_tier_requests" in error_text
+            )
+            if daily_quota_exhausted:
+                raise
             if status_code == 429:
                 if attempt == max_retries:
                     raise
@@ -255,34 +272,60 @@ def read_file():
 @app.route('/api/analyse-url', methods=['POST'])
 def analyse_url():
     try:
-        data = request.json
+        data = request.get_json(silent=True) or {}
         asin = data.get('asin')
-        if not asin:
-            return jsonify({"error": "Product ASIN is required."}), 400
-        # Load data1.json (or latest dataN.json if you want) and extract product_url
-        with open(os.path.join(BASE_DIR, 'data1.json'), 'r', encoding='utf-8') as f:
-            products = json.load(f)["data"]["products"]
-        product = next((p for p in products if p.get('asin') == asin), None)
-        if not product:
-            print("Product not found in data1.json for ASIN:", asin)
-            return jsonify({"error": "Product not found in data1.json."}), 404
-        last_link = product.get('product_url') or product.get('url') or product.get('product_link')
-        if not last_link:
-            app.logger.info("Product URL missing for ASIN %s; cannot use analyze_carbon_footprint", asin)
-            return jsonify({"error": "Product URL missing for ASIN; cannot analyze."}), 400
+        product_title = data.get('title')
+        last_link = data.get('url')
+        if not isinstance(product_title, str) or not product_title.strip():
+            return jsonify({"error": "Product title is required."}), 400
+        if not isinstance(last_link, str) or not last_link.startswith(("https://", "http://")):
+            return jsonify({"error": "A valid product URL is required."}), 400
 
-        analysis = analyze_carbon_footprint(last_link)
+        analysis = analyze_carbon_footprint(last_link, product_title.strip())
         if not analysis:
             raise RuntimeError("Empty analysis returned from external API")
         result_points = analysis.split("\n") if isinstance(analysis, str) else [str(analysis)]
         return jsonify({
             "points": result_points,
             "description": "Detailed analysis of the product.",
+            "product_title": product_title.strip(),
             "asin": asin,
             "link": last_link
         }), 200
+    except ClientError as e:
+        error_text = str(e).lower()
+        error_details = str(e) if app.debug else None
+        if (
+            "generaterequestsperdayperprojectpermodel" in error_text
+            or "generate_content_free_tier_requests" in error_text
+        ):
+            app.logger.warning("Gemini daily request quota exhausted: %s", e)
+            response = {
+                "error": (
+                    "Gemini's daily request quota is exhausted. Please try again after "
+                    "the quota resets or configure billing for the API project."
+                )
+            }
+            if error_details:
+                response["details"] = error_details
+            return jsonify(response), 429
+        if getattr(e, "status_code", None) == 429:
+            app.logger.warning("Gemini request rate limited: %s", e)
+            response = {
+                "error": "Gemini is temporarily rate limiting requests. Please wait and try again."
+            }
+            if error_details:
+                response["details"] = error_details
+            return jsonify(response), 429
+        app.logger.exception("Gemini analysis request failed")
+        response = {
+            "error": "The analysis service is temporarily unavailable. Please try again later."
+        }
+        if error_details:
+            response["details"] = error_details
+        return jsonify(response), 503
     except Exception as e:
-        print(e)
+        app.logger.exception("Unexpected error during product analysis")
         return jsonify({"error": "An error occurred during analysis.", "details": str(e)}), 500
 
 

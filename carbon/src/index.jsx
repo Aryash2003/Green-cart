@@ -9,7 +9,15 @@ import Alert from "react-bootstrap/Alert";
 import Nav from "react-bootstrap/Nav"; // Added missing import for Nav
 import { Link, useNavigate } from "react-router-dom";
 import bgImage from "./assets/bgimg.jpg";
-const API_BASE_URL = "https://green-cart-backend-cofn.onrender.com";
+const API_BASE_URL = import.meta.env.DEV
+  ? "http://localhost:8080"
+  : "https://green-cart-backend-cofn.onrender.com";
+
+function decodeHtmlEntities(value) {
+  const parsed = new DOMParser().parseFromString(value, "text/html");
+  return parsed.body.textContent || value;
+}
+
 function BackgroundImage() {
   return (
     <div
@@ -67,7 +75,7 @@ const ProductSearch = ({ cart, setCart }) => {
 
         // Extract product details from the file data
         const products = (response.data.data.products || []).map((product) => ({
-          title: product.product_title || "No title available",
+          title: decodeHtmlEntities(product.product_title || "No title available"),
           price: product.product_price || "Price not available",
           url: product.product_url || "#",
           photo: product.product_photo || "https://via.placeholder.com/150",
@@ -87,9 +95,13 @@ const ProductSearch = ({ cart, setCart }) => {
     }
   };
 
-  const handleAnalyse = async (product) => {
-    localStorage.setItem("productToAnalyse", JSON.stringify(product));
-    navigate("/analysis"); // No reload, just navigate
+  const handleAnalyse = (product) => {
+    const selectedProduct = {
+      ...product,
+      title: decodeHtmlEntities(product.title),
+    };
+    localStorage.setItem("productToAnalyse", JSON.stringify(selectedProduct));
+    navigate("/analysis", { state: { product: selectedProduct } });
   };
 
   const handleAddToCart = (product) => {

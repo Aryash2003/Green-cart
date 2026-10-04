@@ -1,7 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { useLocation } from "react-router-dom";
 import bgImage from "./assets/bgimg.jpg";
-const API_BASE_URL = "https://green-cart-backend-cofn.onrender.com";
+const API_BASE_URL = import.meta.env.DEV
+  ? "http://localhost:8080"
+  : "https://green-cart-backend-cofn.onrender.com";
+
+function decodeHtmlEntities(value) {
+  const parsed = new DOMParser().parseFromString(value, "text/html");
+  return parsed.body.textContent || value;
+}
+
 function BackgroundImage() {
   return (
     <div
@@ -26,34 +35,64 @@ const Analysis = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState(null);
+  const location = useLocation();
+  const requestedProduct = useRef(null);
 
   useEffect(() => {
     const storedProduct = localStorage.getItem("productToAnalyse");
-    if (!storedProduct) {
+    let productObj = location.state?.product;
+    if (!productObj && storedProduct) {
+      try {
+        productObj = JSON.parse(storedProduct);
+      } catch {
+        localStorage.removeItem("productToAnalyse");
+      }
+    }
+    if (!productObj) {
       setError("No product found for analysis.");
       setLoading(false);
       return;
     }
-    const productObj = JSON.parse(storedProduct);
+    productObj = {
+      ...productObj,
+      title: decodeHtmlEntities(productObj.title),
+    };
+    localStorage.setItem("productToAnalyse", JSON.stringify(productObj));
     setProduct(productObj);
+    const requestKey = `${productObj.asin}:${productObj.url}`;
+    if (requestedProduct.current === requestKey) return;
+    requestedProduct.current = requestKey;
+
     const fetchAnalysis = async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/api/analyse-url`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ asin: productObj.asin }),
+          body: JSON.stringify({
+            asin: productObj.asin,
+            title: productObj.title,
+            url: productObj.url,
+          }),
         });
-        if (!response.ok) throw new Error("Failed to fetch analysis.");
         const data = await response.json();
+        if (!response.ok) {
+          const message = [data.error, data.details].filter(Boolean).join(" ");
+          throw new Error(message || `Analysis request failed (${response.status}).`);
+        }
+        if (data.product_title !== productObj.title) {
+          throw new Error(
+            "The analysis server did not confirm the selected product. Deploy the latest backend and try again."
+          );
+        }
         setAnalysis(data);
-      } catch {
-        setError("An error occurred while fetching analysis.");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred while fetching analysis.");
       } finally {
         setLoading(false);
       }
     };
     fetchAnalysis();
-  }, []);
+  }, [location.state]);
 
   if (loading) {
     return (
@@ -98,6 +137,7 @@ const Analysis = () => {
                 <p><strong>Description:</strong> {product.title}</p>
                 <p><strong>Price:</strong> {product.price}</p>
                 <p><strong>Product URL:</strong> <a href={product.url} target="_blank" rel="noopener noreferrer">{product.url}</a></p>
+                <p><strong>ASIN:</strong> {product.asin}</p>
               </>
             )}
           </div>
